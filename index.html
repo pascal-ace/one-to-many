@@ -1,0 +1,65 @@
+<html>
+<head>
+</head>
+
+<body>
+<h1> WebRTC one to many </h1>
+<div id="myVideo"></div>
+<button onclick="window.publish()"> Start Voicemail </button>
+
+<script>
+    let pc = new RTCPeerConnection()
+    canStash = [];
+    navigator.mediaDevices.getUserMedia({audio: true, video: true})
+        .then(stream => {
+            let el = document.createElement("Video")
+            el.srcObject = stream
+            el.autoplay = true
+            el.controls = true
+            el.muted = true
+            document.getElementById('myVideo').appendChild(el)
+
+            localStream = stream
+            localStream.getTracks().forEach((track) => {
+                pc.addTrack(track, localStream);
+            });
+            // pc.addStream(stream)
+            pc.createOffer().then(d => pc.setLocalDescription(d))
+        }).catch(window.alert)
+
+    // pc.onicecandidate = (e) => {
+    //     console.log("ice", e)
+    //     canStash.push(e.candidate);
+    // }
+
+    async  function publish() {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        console.log("offer: ", pc.localDescription);
+        fetch('/broadcast', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(pc.localDescription)
+        })
+            .then(response => response.json())
+            .then(sdp => {
+                console.log(sdp);
+                pc.setRemoteDescription(sdp).catch(window.alert)
+            })
+    }
+
+    // function sendIce(ice) {
+    //     console.log("sending ice: ", ice);
+    //     fetch('/trickle', {
+    //         method: 'POST',
+    //         headers: {
+    //             'Content-Type': 'application/json'
+    //         },
+    //         body: JSON.stringify(ice)
+    //     })
+    // }
+</script>
+</body>
+</html>
